@@ -11,21 +11,29 @@ library(MASS)
 # correlation)
 #=============================================================================
 
-random_repro = function(nspp, time) {
-	#Randomly generate species repro
-	mu1 = abs(rnorm(nspp,0.1 ) ) #Mean
+random_repro = function(nspp, time, mus = NULL, cov = NULL) {
+	if(is.null(mus) == TRUE ) {
+		#Randomly generate species repro
+		mu1 = abs(rnorm(nspp,0.1 ) ) #Mean
+	}else{ 
+		mu1 = mus
+	}
 
-	#Create a random covariance matrix: 
-	# Random correlation matrix
-	cm1 = matrix(runif(nspp^2), ncol = nspp)
-	cm1 =  cm1 %*% t(cm1)
-	diag(cm1) = 1  # Diagonal elements should be 1
+	if(is.null(cov) == TRUE) {
+		#Create a random covariance matrix: 
+		# Random correlation matrix
+		cm1 = matrix(runif(nspp^2), ncol = nspp)
+		cm1 =  cm1 %*% t(cm1)
+		diag(cm1) = 1  # Diagonal elements should be 1
 
-	# Standard deviations of the time series
-	sd1 = runif(nspp)
+		# Standard deviations of the time series
+		sd1 = runif(nspp)
 
-	# Create the covariance matrix
-	sig1 = diag(sd1) %*% cm1 %*% diag(sd1)
+		# Create the covariance matrix
+		sig1 = diag(sd1) %*% cm1 %*% diag(sd1)
+	}else{ 
+		sig1 = cov
+	}
 
 	#use mvrnorm to make time series (lognormal)
 	sl = exp(mvrnorm(time, mu1, sig1))
@@ -257,4 +265,25 @@ run_invasions = function ( model, repro, nspp, parms, time=500){
 	} else { print("Error: model not recognized")}
 
 
+}
+
+#=============================================================================
+#get_ldgrs
+# Function to measure the low-density growth rates. It finds all of the growth
+# rate data below a certain arbtrary cut-off point, takes the log, finds the 
+# slope. 
+#=============================================================================
+get_ldgrs = function (pop, invader, thresh = 0.001) { 
+	pop_low = pop[pop[,invader]<thresh, ] #Filter
+	nx = 1:dim(pop_low)[1]
+	com_pop = rowSums(as.matrix(pop_low[,-invader]))#Sum residents
+	log_inv_low = log(pop_low[,invader]) #Log
+	log_com_pop = log(com_pop)
+	ldgr_inv = lm(log_inv_low~nx)$coefficients[2] #Invader: Fit and get slope
+	ldgr_res = lm(log_com_pop~nx)$coefficients[2] #Resident: Fit and get slope
+
+	ldgr = NULL # This is the variable to return
+	ldgr$inv = ldgr_inv 
+	ldgr$res = ldgr_res
+	return(ldgr)
 }
