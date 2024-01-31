@@ -129,13 +129,24 @@ stm_se = vector("list", nspp)
 s_ind = 1:nspp
 
 for(s in 1:nspp){ 
-
+	#UFM
+	#Get the growth rates for invader and resident community
+	#with variation. 
 	ufm_se[[n]]$full = get_ldgrs(ufm_inv_full[[s]], invader = s)
+	#Get the growth rates for invader and resident community
+	#no variation. 
 	ufm_se[[n]]$con = get_ldgrs(ufm_inv_con[[s]], invader = s)
+	#The storage effect is the difference between these growth rates
 	ufm_se[[n]]$se = ufm_se[[n]]$full$inv - ufm_se[[n]]$full$res
 
+	#STM
+	#Get the growth rates for invader and resident community
+	#with variation. 
 	stm_se[[n]]$full = get_ldgrs(stm_inv_full[[s]], invader = s)
+	#Get the growth rates for invader and resident community
+	#no variation. 
 	stm_se[[n]]$con = get_ldgrs(stm_inv_con[[s]], invader = s)
+	#The storage effect is the difference between these growth rates
 	stm_se[[n]]$se = stm_se[[n]]$full$inv - stm_se[[n]]$full$res
 
 }
