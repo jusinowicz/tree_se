@@ -246,7 +246,7 @@ run_invasions = function ( model, repro, nspp, parms, time=500){
 			stm_sim = simulate_model ("stm", repro, nspp, parms, time,
 										ics_yes=TRUE, ics_use= ics_use )
 
-			ni_inv[1,] = as.matrix(ufm_sim[time,1:nspp] )
+			ni_inv[1,] = as.matrix(stm_sim[time,1:nspp] )
 			ni_inv[1,s] = .00000001
 
 			#Iterate over time steps
