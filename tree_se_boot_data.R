@@ -226,5 +226,14 @@ mufm_plot = mean_ufm[upper.tri(mean_ufm)]
 mstm_plot = mean_stm[upper.tri(mean_stm)]
 
 par(mfrow = c(2,1))
-hist(mufm_plot)
-hist(mstm_plot)
+hist(mufm_plot, title = "UFM model")
+# Add a vertical line for the overall median
+abline(v = median(mufm_plot), col = "red", lwd = 2)
+# Label the overall median on the x-axis
+axis(1, at = median(mufm_plot), labels = paste(median(mufm_plot)), col.axis = "red")
+
+hist(mstm_plot. title = "STM model")
+# Add a vertical line for the overall median
+abline(v = median(mstm_plot), col = "red", lwd = 2)
+# Label the overall median on the x-axis
+axis(1, at = median(mstm_plot), labels = paste(median(mstm_plot)), col.axis = "red")
