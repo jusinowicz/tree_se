@@ -13,6 +13,7 @@ source("./functions/tree_se_functions.R")
 #=============================================================================
 #Load data:
 repros_sp = read.csv(file="./data/yearcount66.csv")
+repros_sp = repros_sp+0.001
 
 #=============================================================================
 # Global parameters
@@ -40,14 +41,14 @@ sig1 = cov(repros_sp)
 parms_ufm = NULL
 parms_ufm$aij = matrix(1,nspp,nspp) #Seedling competition
 parms_ufm$fij = matrix(0.6,nspp,1) #Seedling survival
-del1 = c(0.1,0.1) #Adult death rate
+del1 = matrix(0.1,nspp,1)  #Adult death rate
 parms_ufm$del1_s = 1 - del1 #Adult survival rate
 
 #Model 2 adapted from Stump and Vasseur 2023
 #parameters
 parms_stm = NULL
-parms_stm$del1 = c(0.1,0.1) #Adult death rate
-parms_stm$att_e = c(1,1) #Enemy attack rate ????<====Any expectation from lit?   
+parms_stm$del1 = matrix(0.1,nspp,1) #Adult death rate
+parms_stm$att_e = matrix(1,nspp,1) #Enemy attack rate ????<====Any expectation from lit?   
 # ==== How do we equate attack rates to aij? 
 
 #=============================================================================
@@ -78,9 +79,9 @@ parms_stm$att_e = c(1,1) #Enemy attack rate ????<====Any expectation from lit?
 
 for (bootstrap_iter in 1:n_bootstrap) {
 	ntime = n_subsample
-  # Perform bootstrap resampling on repros_sp preserving correlations
-  b_indices = sample(1:nrow(repros_sp), size = n_subsample, replace = TRUE)
-  repros_sub= repros_sp [b_indices, ]
+	# Perform bootstrap resampling on repros_sp preserving correlations
+	b_indices = sample(1:nrow(repros_sp), size = n_subsample, replace = TRUE)
+	repros_sub= repros_sp [b_indices, ]
   
 	#=============================================================================
 	# Run the invasions to check coexistence. 
@@ -92,26 +93,42 @@ for (bootstrap_iter in 1:n_bootstrap) {
   	for (s1 in 1:nspp) { 
   		#Cycle through residents
   		for(s2 in 1:nspp){
-  			repros_sub_p = repros_sub[,c(s1,s2)]
 
+  			#Subset the reproduction and all parameters:
+  			repros_sub_p = as.matrix(repros_sub[,c(s1,s2)])
 
-			ufm_inv_full = run_invasions( model = "ufm", repro = repros_sub_p, nspp=nspp, 
-						parms=parms_ufm, time= ntime)
-			stm_inv_full = run_invasions( model = "stm", repro = repros_sub_p, nspp=nspp, 
-						parms=parms_stm, time= ntime)
+  			#UFM
+  			parms_ufm_sub = NULL
+			parms_ufm_sub$aij = matrix(c(parms_ufm$aij[s1,s2], parms_ufm$aij[s1,s1],
+										parms_ufm$aij[s2,s1], parms_ufm$aij[s2,s2]),
+										2,2)
+			parms_ufm_sub$fij = as.matrix(c(parms_ufm$fij[s1],parms_ufm$fij[s2]))
+			parms_ufm_sub$del1_s = as.matrix(c(parms_ufm$del1_s[s1], 
+												parms_ufm$del1_s[s2]))
+
+			#STM
+			parms_stm_sub = NULL
+			parms_stm_sub$del1 = as.matrix(c(parms_stm$del1[s1],parms_stm$del1[s2])) #Adult death rate
+			parms_stm_sub$att_e = as.matrix(c(parms_stm$att_e[s1],parms_stm$att_e[s2])) #Enemy attack rate ????<====Any expectation from lit?   
+
+			#Run invasions 
+			ufm_inv_full = run_invasions( model = "ufm", repro = repros_sub_p, nspp=2, 
+						parms=parms_ufm_sub, time= ntime)
+			stm_inv_full = run_invasions( model = "stm", repro = repros_sub_p, nspp=2, 
+						parms=parms_stm_sub, time= ntime)
 
 			# #Check the invasions with basic plots
-			# par(mfrow = c(nspp,2))
-			# for(n in 1:nspp){
-			# 	plot(ufm_inv_full[[n]][,n],t="l", ylim=c(0,1), main = "UFM")
-			# 	spp_com = 1:nspp
+			# par(mfrow = c(2,2))
+			# for(n in 1:2){
+			# 	plot(ufm_inv_full[[n]][,n],t="l",ylim=c(0,1), main = "UFM")
+			# 	spp_com = 1:2
 			# 	spp_com = spp_com[-n]
 			# 	lines( rowSums(as.matrix(ufm_inv_full[[n]][,spp_com])),col="blue")
 			# }
 
-			# for(n in 1:nspp){
+			# for(n in 1:2){
 			# 	plot(stm_inv_full[[n]][,n],t="l", ylim=c(0,1), main = "STM")
-			# 	spp_com = 1:nspp
+			# 	spp_com = 1:2
 			# 	spp_com = spp_com[-n]
 			# 	lines( rowSums(as.matrix(ufm_inv_full[[n]][,spp_com])),col="blue")
 			# }
@@ -122,11 +139,11 @@ for (bootstrap_iter in 1:n_bootstrap) {
 			# the environmental response is held constant at its average.
 			#=============================================================================
 			#Run invasions with constant environment: 
-			repros_con = matrix(colMeans(repros_sub_p), ntime, nspp, byrow=T)
-			ufm_inv_con= run_invasions( model = "ufm", repro = repros_con, nspp=nspp, 
-						parms=parms_ufm, time= ntime)
-			stm_inv_con = run_invasions( model = "stm", repro = repros_con, nspp=nspp, 
-						parms=parms_stm, time= ntime)
+			repros_con = matrix(colMeans(repros_sub_p), ntime, 2, byrow=T)
+			ufm_inv_con= run_invasions( model = "ufm", repro = repros_con, nspp=2, 
+						parms=parms_ufm_sub, time= ntime)
+			stm_inv_con = run_invasions( model = "stm", repro = repros_con, nspp=2, 
+						parms=parms_stm_sub, time= ntime)
 
 			# #Check the invasions with basic plots
 			# par(mfrow = c(nspp,2))
@@ -170,6 +187,7 @@ for (bootstrap_iter in 1:n_bootstrap) {
 			#The storage effect is the difference between these growth rates
 			stm_se$se = stm_se$full$inv - stm_se$full$res
 
+			#Store the SE calculation for each boostrap iteration
 			all_ufm_se[s1,s2,bootstrap_iter] = ufm_se$se
 			all_stm_se[s1,s2,bootstrap_iter] = stm_se$se
 		}
@@ -178,11 +196,13 @@ for (bootstrap_iter in 1:n_bootstrap) {
 }
 
 
+#Get the average and sd across all the bootstraps for each pairwise interaction.
+#Using apply is always faster than a for loop.
+mean_ufm = apply(all_ufm_se, c(1, 2), function(x) mean(x)) 
+sd_ufm = apply(all_ufm_se, c(1, 2), function(x) sd(x)) 
+mean_stm = apply(all_stm_se, c(1, 2), function(x) mean(x)) 
+sd_stm = apply(all_stm_se, c(1, 2), function(x) sd(x)) 
 
-mean_ufm = colMeans(all_ufm_se)
-sd_ufm = sqrt(apply(all_ufm_se, 2, var))
-mean_stm = colMeans(all_stm_se)
-sd_stm = sqrt(apply(all_stm_se, 2, var))
 
 # mean_ufm = sapply(all_ufm_se, function(ufm_se_iter) sapply(ufm_se_iter, function(se) mean(unlist(se))))
 # sd_ufm = sapply(all_ufm_se, function(ufm_se_iter) sapply(ufm_se_iter, function(se) sd(unlist(se))))

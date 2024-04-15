@@ -58,7 +58,7 @@ ufm_step = function ( ni, si, repro, aij, fi, del1_s ) {
 
 	#Run each species simultaneously
 	si_comp = 1+sum(aij%*%(ni*repro) ) #Sapling competition
-	ni_comp = sum(repro) #Adult competition 
+	ni_comp = sum(si) #Adult competition 
 	si_new = (si*fi+ni*repro/si_comp) # Seedlings
 	ni_new =  ni*del1_s+(1-sum(ni*del1_s)) * si/ni_comp #Adults
 
