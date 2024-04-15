@@ -9,17 +9,32 @@ source("./functions/tree_se_functions.R")
 
 
 #=============================================================================
-# Load the yearly counts
+# Load the yearly counts.
+# Remove species that do not meet basic sampling tresholds. 
+# Scale the remaining species to standardize the mean and 
+# variance effects. 
 #=============================================================================
 #Load data:
 repros_sp = read.csv(file="./data/yearcount66.csv")
-repros_sp = repros_sp+0.001
+
+#Filter data according to e.g. total number of samples 
+min.samp=100 #Used in Usinowicz et al. 2018
+repros_sp.use=repros_sp [,which(colSums(repros_sp )>=min.samp)]
+
+#Include this filter to make sure the number of YEARS sampled is also above 
+#some threshold
+yr.samp=3 #Used in Usinowicz et al. 2018
+repros_sp.use =repros_sp.use [,which(colSums(repros_sp.use >0)>=yr.samp)]
+
+#This scales each species' repro by first converting to logscale, 
+#scaling to m=0, sd = 1, then transforming back with exp()
+repros_sp_scale= exp( scale( log (repros_sp.use +1) ) )
 
 #=============================================================================
 # Global parameters
 #=============================================================================
-nspp = dim(repros_sp)[2]
-ntime = dim(repros_sp)[1]
+nspp = dim(repros_sp_scale)[2]
+ntime = dim(repros_sp_scale)[1]
 
 # Define the number of iterations and number of rows to subsample
 n_bootstrap = 10
@@ -31,10 +46,10 @@ all_ufm_se = array( 0, dim = c(nspp, nspp, n_bootstrap))
 all_stm_se = array( 0, dim = c(nspp, nspp, n_bootstrap))
 
 # Get the covariance matrix from data
-sig1 = cov(repros_sp)
+sig1 = cov(repros_sp_scale)
 
 #=============================================================================
-# Initialize variables
+# Initialize variables for the models
 #=============================================================================
 #Model 1 adapted from Usinowicz et al. 2012
 #parameters
@@ -55,9 +70,9 @@ parms_stm$att_e = matrix(1,nspp,1) #Enemy attack rate ????<====Any expectation f
 # Run simulations
 #=============================================================================
 # *************Implement this for species pairs to get visual checks
-# ufm_sim = simulate_model ( model = "ufm", repro = repros_sp, nspp=nspp, 
+# ufm_sim = simulate_model ( model = "ufm", repro = repros_sp_scale, nspp=nspp, 
 # 			parms=parms_ufm, time= ntime)
-# stm_sim = simulate_model ( model = "stm", repro = repros_sp, nspp=nspp, 
+# stm_sim = simulate_model ( model = "stm", repro = repros_sp_scale, nspp=nspp, 
 # 			parms=parms_stm, time= ntime)
 
 # #Check simulations with basic plots
@@ -74,14 +89,15 @@ parms_stm$att_e = matrix(1,nspp,1) #Enemy attack rate ????<====Any expectation f
 # }
 
 #=============================================================================
-# Loop through each bootstrap iteration
+# Calculate each pairwise measurement of the storage effect. 
+# Do this for multiple bootstrap iterations
 #=============================================================================
 
 for (bootstrap_iter in 1:n_bootstrap) {
 	ntime = n_subsample
-	# Perform bootstrap resampling on repros_sp preserving correlations
-	b_indices = sample(1:nrow(repros_sp), size = n_subsample, replace = TRUE)
-	repros_sub= repros_sp [b_indices, ]
+	# Perform bootstrap resampling on repros_sp_scale preserving correlations
+	b_indices = sample(1:nrow(repros_sp_scale), size = n_subsample, replace = TRUE)
+	repros_sub= repros_sp_scale [b_indices, ]
   
 	#=============================================================================
 	# Run the invasions to check coexistence. 
@@ -203,8 +219,12 @@ sd_ufm = apply(all_ufm_se, c(1, 2), function(x) sd(x))
 mean_stm = apply(all_stm_se, c(1, 2), function(x) mean(x)) 
 sd_stm = apply(all_stm_se, c(1, 2), function(x) sd(x)) 
 
+#=============================================================================
+#Plot a histogram of the SE measurements.
+#=============================================================================
+mufm_plot = mean_ufm[upper.tri(mean_ufm)]
+mstm_plot = mean_stm[upper.tri(mean_stm)]
 
-# mean_ufm = sapply(all_ufm_se, function(ufm_se_iter) sapply(ufm_se_iter, function(se) mean(unlist(se))))
-# sd_ufm = sapply(all_ufm_se, function(ufm_se_iter) sapply(ufm_se_iter, function(se) sd(unlist(se))))
-# mean_stm = sapply(all_stm_se, function(stm_se_iter) sapply(stm_se_iter, function(se) mean(unlist(se))))
-# sd_stm = sapply(all_stm_se, function(stm_se_iter) sapply(stm_se_iter, function(se) sd(unlist(se))))
+par(mfrow = c(2,1))
+hist(mufm_plot)
+hist(mstm_plot)
