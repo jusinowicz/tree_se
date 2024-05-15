@@ -67,18 +67,18 @@ ufm_sim = simulate_model ( model = "ufm", repro = repros_sp, nspp=nspp,
 stm_sim = simulate_model ( model = "stm", repro = repros_sp, nspp=nspp, 
 			parms=parms_stm, time= ntime)
 
-# #Check simulations with basic plots
-# par(mfrow = c(2,1))
-# plot(ufm_sim[,1],t="l", ylim=c(0,1), main = "UFM")
-# for(n in 2:nspp){
-# 	lines( ufm_sim[,n],col="blue")
-# }
+#Check simulations with basic plots
+par(mfrow = c(2,1))
+plot(ufm_sim[,1],t="l", ylim=c(0,1), main = "UFM")
+for(n in 2:nspp){
+	lines( ufm_sim[,n],col="blue")
+}
 
 
-# plot(stm_sim[,1],t="l", ylim=c(0,1), main = "STM")
-# for(n in 2:nspp){
-# 	lines( stm_sim[,n],col="blue")
-# }
+plot(stm_sim[,1],t="l", ylim=c(0,1), main = "STM")
+for(n in 2:nspp){
+	lines( stm_sim[,n],col="blue")
+}
 
 #=============================================================================
 # Loop through each bootstrap iteration

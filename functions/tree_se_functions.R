@@ -279,8 +279,8 @@ get_ldgrs = function (pop, invader, thresh = 0.001) {
 	com_pop = rowSums(as.matrix(pop_low[,-invader]))#Sum residents
 	log_inv_low = log(pop_low[,invader]) #Log
 	log_com_pop = log(com_pop)
-	ldgr_inv = lm(log_inv_low~nx)$coefficients[2] #Invader: Fit and get slope
-	ldgr_res = lm(log_com_pop~nx)$coefficients[2] #Resident: Fit and get slope
+	ldgr_inv = exp(lm(log_inv_low~nx)$coefficients[2]) #Invader: Fit and get slope
+	ldgr_res = exp(lm(log_com_pop~nx)$coefficients[2] )#Resident: Fit and get slope
 
 	ldgr = NULL # This is the variable to return
 	ldgr$inv = ldgr_inv 
