@@ -57,10 +57,16 @@ random_repro = function(nspp, time, mus = NULL, cov = NULL) {
 ufm_step = function ( ni, si, repro, aij, fi, del1_s ) { 
 
 	#Run each species simultaneously
-	si_comp = 1+sum(aij%*%(ni*repro) ) #Sapling competition
+	si_comp = 1+aij%*%(ni*repro)  #Sapling competition
 	ni_comp = sum(si) #Adult competition 
 	si_new = (si*fi+ni*repro/si_comp) # Seedlings
 	ni_new =  ni*del1_s+(1-sum(ni*del1_s)) * si/ni_comp #Adults
+
+	# si_comp = 1+aij%*%(ni[t,]*repro[t,])  #Sapling competition
+	# ni_comp = sum(si[t,]) #Adult competition 
+	# si_new = (si[t,]*fi+ni[t,]*repro[t,]/si_comp) # Seedlings
+	# ni_new =  ni[t,]*del1_s+(1-sum(ni[t,]*del1_s)) * si[t,]/ni_comp #Adults
+
 
 	#Put these into one variable to return
 	vr = list(ni = ni_new,
@@ -205,6 +211,7 @@ run_invasions = function ( model, repro, nspp, parms, time=500){
 			#absence of each species for ICs
 			ni_inv = matrix(0,time, nspp )
  			si_inv = ni_inv
+ 			si_comp = ni_inv
 
 			ics_use = runif(nspp)
 			ics_use[s] = 0
@@ -223,13 +230,13 @@ run_invasions = function ( model, repro, nspp, parms, time=500){
 							parms$aij, parms$fi, parms$del1_s)
 				ni_inv[t+1,] = new_step$ni #Next step in adult pop
 				si_inv[t+1,] = new_step$si #Next step in sapling pop
-
+				si_comp[t, ] = new_step$comp_si
 			}
  
  			#Add each invasion to the list
-			ni_all[[s]] = data.frame(ni = ni_inv, si = si_inv)
+			ni_all[[s]] = data.frame(ni = ni_inv, si = si_inv, si_comp = si_comp)
 
-		}
+		} 
 
 		return(ni_all)
 
@@ -276,6 +283,7 @@ run_invasions = function ( model, repro, nspp, parms, time=500){
 get_ldgrs = function (pop, invader, thresh = 0.001) { 
 	pop_low = pop[pop[,invader]<thresh, ] #Filter
 	nx = 1:dim(pop_low)[1]
+	#print(paste("thresh ", thresh, "nx ", length(nx)))
 	com_pop = rowSums(as.matrix(pop_low[,-invader]))#Sum residents
 	log_inv_low = log(pop_low[,invader]) #Log
 	log_com_pop = log(com_pop)

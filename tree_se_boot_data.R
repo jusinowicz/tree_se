@@ -42,7 +42,7 @@ ntime = dim(repros_sp_scale)[1]
 # longer runs take more computation time. Unfortunately, I have not 
 # come up with a good way to automate this so it requires some tinkering. 
 n_bootstrap = 10
-n_subsample = 1000 
+n_subsample = 1000
 
 # Initialize variables to store results
 #Each species competes against each other species and itself. 
@@ -50,6 +50,8 @@ all_ufm_se = array( 0, dim = c(nspp, nspp, n_bootstrap))
 all_stm_se = array( 0, dim = c(nspp, nspp, n_bootstrap))
 all_ufm_lgr = array( 0, dim = c(nspp, nspp, n_bootstrap))
 all_stm_lgr = array( 0, dim = c(nspp, nspp, n_bootstrap))
+all_ufm_con = array( 0, dim = c(nspp, nspp, n_bootstrap))
+all_stm_con = array( 0, dim = c(nspp, nspp, n_bootstrap))
 
 
 # Get the covariance matrix from data
@@ -122,7 +124,7 @@ for (bootstrap_iter in 1:n_bootstrap) {
 
   			#UFM
   			parms_ufm_sub = NULL
-			parms_ufm_sub$aij = matrix(c(parms_ufm$aij[s1,s2], parms_ufm$aij[s1,s1],
+			parms_ufm_sub$aij = matrix(c(parms_ufm$aij[s1,s1],parms_ufm$aij[s1,s2],
 										parms_ufm$aij[s2,s1], parms_ufm$aij[s2,s2]),
 										2,2)
 			parms_ufm_sub$fij = as.matrix(c(parms_ufm$fij[s1],parms_ufm$fij[s2]))
@@ -193,12 +195,12 @@ for (bootstrap_iter in 1:n_bootstrap) {
 			#UFM
 			#Get the growth rates for invader and resident community
 			#with variation. 
-			ufm_se$full = get_ldgrs(ufm_inv_full[[1]], invader = 1,thresh=0.01)
+			ufm_se$full = get_ldgrs(ufm_inv_full[[1]][,1:2], invader = 1,thresh=0.01)
 			#Get the growth rates for invader and resident community
 			#no variation. 
 			ufm_se$con = get_ldgrs(ufm_inv_con[[1]], invader = 1, thresh=0.01)
 			#The storage effect is the difference between these growth rates
-			ufm_se$se = ufm_se$full$inv - ufm_se$full$res
+			ufm_se$se = ufm_se$full$inv - ufm_se$con$inv
 
 			#STM
 			#Get the growth rates for invader and resident community
@@ -208,7 +210,7 @@ for (bootstrap_iter in 1:n_bootstrap) {
 			#no variation. 
 			stm_se$con = get_ldgrs(stm_inv_con[[1]], invader = 1)
 			#The storage effect is the difference between these growth rates
-			stm_se$se = stm_se$full$inv - stm_se$full$res
+			stm_se$se = stm_se$full$inv - stm_se$con$inv
 
 			#Store the SE calculation and LDGR for each boostrap iteration
 			all_ufm_se[s1,s2,bootstrap_iter] = ufm_se$se
@@ -216,6 +218,9 @@ for (bootstrap_iter in 1:n_bootstrap) {
 	
 			all_ufm_lgr[s1,s2,bootstrap_iter] = ufm_se$full$inv
 			all_stm_lgr[s1,s2,bootstrap_iter] = stm_se$full$inv
+
+			all_ufm_con[s1,s2,bootstrap_iter] = ufm_se$con$inv
+			all_stm_con[s1,s2,bootstrap_iter] = stm_se$con$inv
 		}
 	}
 
@@ -229,23 +234,29 @@ sd_ufm = apply(all_ufm_se, c(1, 2), function(x) sd(x))
 mean_stm = apply(all_stm_se, c(1, 2), function(x) mean(x)) 
 sd_stm = apply(all_stm_se, c(1, 2), function(x) sd(x)) 
 
-mean_ulgr = apply(all_ufm_lgr, c(1, 2), function(x) mean(x)) 
-sd_ulgr = apply(all_ufm_lgr, c(1, 2), function(x) sd(x)) 
-mean_slgr = apply(all_stm_lgr, c(1, 2), function(x) mean(x)) 
-sd_slgr = apply(all_stm_lgr, c(1, 2), function(x) sd(x)) 
+#mean_ulgr = apply(all_ufm_lgr, c(1, 2), function(x) mean(x)) 
+#mean_ulgr = mean_ulgr*18.277 -17.282 
+#mean_ufm_se = mean_ulgr - 1
+# sd_ulgr = apply(all_ufm_lgr, c(1, 2), function(x) sd(x)) 
+# mean_slgr = apply(all_stm_lgr, c(1, 2), function(x) mean(x)) 
+# sd_slgr = apply(all_stm_lgr, c(1, 2), function(x) sd(x)) 
 
 #=============================================================================
 #Plot a histogram of the SE measurements.
 #=============================================================================
-maiju_plot = (mean_ulgr *t(mean_ulgr))
-maijs_plot = (mean_slgr *t(mean_slgr))
-maiju_plot = maiju_plot[upper.tri(maiju_plot)]
-maijs_plot = maijs_plot[upper.tri(maijs_plot)]
+# maiju_plot = 1/(mean_ulgr *t(mean_ulgr))
+# maijs_plot = 1/(mean_slgr *t(mean_slgr))
+# maiju_plot = maiju_plot[upper.tri(maiju_plot)]
+# maijs_plot = maijs_plot[upper.tri(maijs_plot)]
 
 mufm_plot = mean_ufm[upper.tri(mean_ufm)]
 mstm_plot = mean_stm[upper.tri(mean_stm)]
 
-par(mfrow = c(2,2))
+# mufm_plot = mean_ufm_se[upper.tri(mean_ufm_se)]
+# mstm_plot = mean_stm_se[upper.tri(mean_stm_se)]
+
+
+par(mfrow = c(1,2))
 hist(mufm_plot, main = "UFM model",xaxt="n",xlim=c(0,1))
 # Add a vertical line for the overall median
 abline(v = median(mufm_plot), col = "red", lwd = 2)
@@ -254,19 +265,25 @@ axis(1, at = c(0,median(mufm_plot), max(mufm_plot),1), labels = c(0,paste(round(
 	paste(round(max(mufm_plot),digits=3)),1))
 
 hist(mstm_plot, main = "STM model",xaxt="n",xlim=c(0,1))
-
-hist(maiju_plot, main = "UFM model",xaxt="n",xlim=c(0,1))
 # Add a vertical line for the overall median
-abline(v = median(maiju_plot), col = "red", lwd = 2)
+abline(v = median(mstm_plot), col = "red", lwd = 2)
 # Label the overall median on the x-axis
-axis(1, at = c(0,median(maiju_plot), max(maiju_plot),1), labels = c(0,paste(round(median(maiju_plot),digits=3)), 
-	paste(round(max(maiju_plot),digits=3)),1))
+axis(1, at = c(0,median(mstm_plot), max(mstm_plot),1), labels = c(0,paste(round(median(mstm_plot),digits=3)), 
+	paste(round(max(mstm_plot),digits=3)),1))
 
-hist(maijs_plot, main = "STM model",xaxt="n",xlim=c(0,1))
-# Add a vertical line for the overall median
-abline(v = median(maijs_plot), col = "red", lwd = 2)
-# Label the overall median on the x-axis
-axis(1, at = c(0,median(maijs_plot), max(maijs_plot),1), labels = c(0,paste(round(median(maijs_plot),digits=3)), 
-	paste(round(max(maijs_plot),digits=3)),1))
 
-save(file = "test_se_r1.var",all_ufm_se,all_stm_se,all_ufm_lgr,all_stm_lgr )
+# hist(maiju_plot, main = "UFM model",xaxt="n",xlim=c(0,1))
+# # Add a vertical line for the overall median
+# abline(v = median(maiju_plot), col = "red", lwd = 2)
+# # Label the overall median on the x-axis
+# axis(1, at = c(0,median(maiju_plot), max(maiju_plot),1), labels = c(0,paste(round(median(maiju_plot),digits=3)), 
+# 	paste(round(max(maiju_plot),digits=3)),1))
+
+# hist(maijs_plot, main = "STM model",xaxt="n",xlim=c(0,1))
+# # Add a vertical line for the overall median
+# abline(v = median(maijs_plot), col = "red", lwd = 2)
+# # Label the overall median on the x-axis
+# axis(1, at = c(0,median(maijs_plot), max(maijs_plot),1), labels = c(0,paste(round(median(maijs_plot),digits=3)), 
+# 	paste(round(max(maijs_plot),digits=3)),1))
+
+save(file = "test_se_r1.var",all_ufm_se,all_stm_se,all_ufm_lgr,all_stm_lgr,all_ufm_con,all_stm_con )

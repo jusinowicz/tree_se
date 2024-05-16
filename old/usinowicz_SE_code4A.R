@@ -113,13 +113,15 @@ for (a in 1:length(filenames)){
 			
 						#This for loop performs the sums in equation 4. 
 						sumS=0; #matrix(0,(ngens-l.tau))
+						x2s = matrix(0,ngens,2)
 						for (t in 2:(ngens-l.tau)){ 
 								x2=rsim[t:(t+l.tau),2]/(1+alpha.ij[2,1]*rsim[t:(t+l.tau),1]);
 								s2=f.tau%*%x2;
+								x2s[t,2] = x2[1]
 
 								x1=rsim[t:(t+l.tau),1]/(1+alpha.ij[1,1]*rsim[t:(t+l.tau),1]);
 								s1=f.tau%*%x1;
-				               
+				               	x2s[t,1] = x1[1]
 								sumS=sumS+s2/s1;
 
 								#if(is.infinite(sumS) || is.nan(sumS)){ sumS=0}
