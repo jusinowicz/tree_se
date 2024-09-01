@@ -295,3 +295,149 @@ get_ldgrs = function (pop, invader, thresh = 0.001) {
 	ldgr$res = ldgr_res
 	return(ldgr)
 }
+
+
+#=============================================================================
+#get_dij
+# Version 1: LDG only 
+# Function to measure the low-density growth rates, in the form of Dij from 
+# Usinowicz et al. 2012
+# 
+# Assume the data are pariwise interactions so xi, si, ri are each a matrix 
+# with dimensions #timesteps by 2.  
+#=============================================================================
+
+get_dij = function ( xi, si, ri, di, fi,aij, invader=2){
+
+	nspp = dim(xi)[2]
+	aijm = matrix(aij[invader,],dim(xi)[1],nspp)
+	si1 = fi[invader] * si[,invader] + ri[,invader]*xi[,invader]/(1+rowSums(aijm*xi*ri) )  
+	Dij = mean(log(di[invader] + (1-di[invader])*(si1/(xi[,invader]*rowSums(si) ) ) ) ) 
+
+	return(Dij)
+
+}
+
+#=============================================================================
+#get_dij_approx1
+# Version 2: Can we numerically approximate di -> 1? Not really
+# Function to measure the low-density growth rates, in the form of Dij from 
+# Usinowicz et al. 2012
+# 
+# Assume the data are pariwise interactions so xi, si, ri are each a matrix 
+# with dimensions #timesteps by 2. 
+#=============================================================================
+
+get_dij_approx1 = function ( xi, si, ri, fi,aij, invader){
+
+	#di=0.99999
+	nspp = dim(xi)[2]
+	aijm = matrix(aij[invader,],dim(xi)[1],nspp)
+	si1 = fi[invader] * si[,invader] + ri[,invader]*xi[,invader]/(1+rowSums(aijm*xi*ri) )  
+	#Dij = mean(log(di + (1-di)*(si1/(xi[,invader]*rowSums(si) ) ) ) ) 
+	
+	#This version matches the full approximation below. It is essentially
+	#assuming that species achieve their MAX growth rates relative to the 
+	#adult mortality rate, di. It is actually the correct way to do the 
+	# di -> 1 approximation numerically:
+
+	Dij = mean(log(1 + (si1/(xi[,invader]*rowSums(si) ) ) ) ) 
+
+
+	return(Dij)
+
+}
+
+#=============================================================================
+#get_dij_approx2
+# Version 2: Calculate Dij based on the step after di -> 1. 
+# Function to measure the low-density growth rates, in the form of Dij from 
+# Usinowicz et al. 2012
+#
+# Assume the data are pariwise interactions so xi, si, ri are each a matrix 
+# with dimensions #timesteps by 2. 
+#=============================================================================
+
+
+get_dij_approx2 = function( xi, si, ri, fi,aij, invader){
+
+	nspp = dim(xi)[2]
+	aijm = matrix(aij[invader,],dim(xi)[1],nspp)
+	si1 = fi[invader] * si[,invader] + ri[,invader]*xi[,invader]/(1+rowSums(aijm*xi*ri) )  
+	Dij = mean(log(si1/(xi[,invader]*rowSums(si) ) ))
+	
+	# The original version of the approximation was: 
+	# Dij = mean((si1/(xi[,invader]*rowSums(si) )-1 ))
+	# Which returns a larger value. Taking the log seems to be closer 
+	# to what we get when measuring the LDG directly (i.e. get_dij).
+
+	return(Dij)
+
+}
+
+#=============================================================================
+#get_dij_approx3
+# Version 3: The full approximation
+# Function to measure the low-density growth rates, in the form of Dij from 
+# Usinowicz et al. 2012
+#
+# Assume the data are pariwise interactions so xi, si, ri are each a matrix 
+# with dimensions #timesteps by 2.  
+#
+# Notes: 
+# The approximation x(t-tau)/x(t) = 1 at the boundary seems to hold well
+# Approximating the numerator and the denominator through the sums seems to 
+# hold well.
+# Breaking the approximation down to si/sj at the boundary seems to hold well. 
+# But using the original approximation doesn't seem to match with the first
+# purely numerical definition used above!
+# After some tinkering, this is what matches: 
+# The below sum version of the approximation  = 
+#				mean(log(1 + (si1/(xi[,invader]*rowSums(si) ) ) ) ) 
+#=============================================================================
+
+get_dij_approx3 = function(ri, fi, aij, tau=15, invader = 2){
+
+	ngens = dim(ri)[1]
+	nspp = dim(ri)[2]
+	res = 1:nspp
+	res = res[-invader]
+
+	#fi^tau
+	fi.tau = fi[invader]^seq(from=0, to=tau, by=1)
+	fi.tau = fi.tau[length(fi.tau):1]
+
+	#invader competition coefficients (remove invader)
+	aijI = aij[invader, ]
+	aijI = aijI[-invader]
+
+	#resident competition coefficients (remove invader)
+	aijR = aij[res,]
+	aijR = aijR[-invader]
+
+	sumDij = 0
+	num1_k = matrix(0,ngens-tau,1)
+	den1_k = matrix(0,ngens-tau,1)
+	for (t in 2:(ngens-tau)){
+
+		#Numerator of the approximation, sum from t-tau to t
+		num1 = xi[t:(t+tau),invader]*ri[t:(t+tau),invader]/(1+aijI*ri[t:(t+tau),res])
+		num1_k[t] = num1%*%fi.tau
+		num1 = num1%*%fi.tau
+
+		#Denominator of the approximation, sum from t-tau to t
+		den1 = xi[t:(t+tau),invader]*ri[t:(t+tau),res]/(1+aijR*ri[t:(t+tau),res])
+		den1_k[t] = den1%*%fi.tau
+		den1 = den1%*%fi.tau
+
+		#Keep a running sum
+		sumDij = sumDij+(num1/den1)
+	}
+
+	#Get the expectation by dividing the length of the sum
+	Dij = sumDij/(ngens-tau) -1 
+	#Dij = log(Dij)
+
+	return(Dij)
+
+}

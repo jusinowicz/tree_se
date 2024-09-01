@@ -25,6 +25,15 @@ all_stm_se = matrix(0, n_bootstrap, nspp)
 all_ufm_full = vector("list", nspp)
 all_stm_full = vector("list", nspp)
 
+# Initialize variables to store results
+#Each species competes against each other species and itself. 
+all_ufm_se = array( 0, dim = c(nspp, nspp, n_bootstrap))
+all_stm_se = array( 0, dim = c(nspp, nspp, n_bootstrap))
+all_ufm_lgr = array( 0, dim = c(nspp, nspp, n_bootstrap))
+all_stm_lgr = array( 0, dim = c(nspp, nspp, n_bootstrap))
+all_ufm_con = array( 0, dim = c(nspp, nspp, n_bootstrap))
+all_stm_con = array( 0, dim = c(nspp, nspp, n_bootstrap))
+
 #Get random repro series for two species. 
 #repros_sp = random_repro (nspp,ntime)
 
@@ -83,13 +92,14 @@ for(n in 2:nspp){
 #=============================================================================
 # Loop through each bootstrap iteration
 #=============================================================================
-
+ufm_inv_boot = vector("list", nspp)
+repros_all = vector("list", n_bootstrap)
 for (bootstrap_iter in 1:n_bootstrap) {
 	ntime = n_subsample
-  # Perform bootstrap resampling on repros_sp preserving correlations
-  b_indices = sample(1:nrow(repros_sp), size = n_subsample, replace = TRUE)
-  repros_sub= repros_sp [b_indices, ]
-  
+	# Perform bootstrap resampling on repros_sp preserving correlations
+	b_indices = sample(1:nrow(repros_sp), size = n_subsample, replace = TRUE)
+	repros_sub= repros_sp [b_indices, ]
+
 	#=============================================================================
 	# Run the invasions to check coexistence. 
 	#=============================================================================
@@ -100,6 +110,13 @@ for (bootstrap_iter in 1:n_bootstrap) {
 	stm_inv_full = run_invasions( model = "stm", repro = repros_sub, nspp=nspp, 
 				parms=parms_stm, time= ntime)
 
+	for (n in 1:nspp){
+		ufm_inv_boot[[n]] = rbind(ufm_inv_boot[[n]], unlist(c(ufm_inv_full[[n]][1,], 
+									repros_sub[1,])) )
+	}
+
+	repros_all[[bootstrap_iter]] = repros_sub
+	
 	# #Check the invasions with basic plots
 	# par(mfrow = c(nspp,2))
 	# for(n in 1:nspp){
@@ -172,17 +189,37 @@ for (bootstrap_iter in 1:n_bootstrap) {
 		#The storage effect is the difference between these growth rates
 		stm_se[[s]]$se = stm_se[[s]]$full$inv - stm_se[[s]]$full$res
 
-		all_ufm_se[bootstrap_iter,s] = ufm_se[[s]]$se
-		all_stm_se[bootstrap_iter,s] = stm_se[[s]]$se
+		if(nspp==2){
+			sss = c(1,2) 
+			s2 =  sss[sss!=s]
+			#Store the SE calculation and LDGR for each boostrap iteration
+			all_ufm_se[s,s2,bootstrap_iter] = ufm_se[[s]]$se
+			all_stm_se[s,s2,bootstrap_iter] = stm_se[[s]]$se
+
+			all_ufm_lgr[s,s2,bootstrap_iter] = ufm_se[[s]]$full$inv
+			all_stm_lgr[s,s2,bootstrap_iter] = stm_se[[s]]$full$inv
+
+			all_ufm_con[s,s2,bootstrap_iter] = ufm_se[[s]]$con$inv
+			all_stm_con[s,s2,bootstrap_iter] = stm_se[[s]]$con$inv
+		}
 	}
 
-  # Store full results from this iteration
-  all_ufm_full[[bootstrap_iter]] = ufm_se
-  all_stm_full[[bootstrap_iter]] = stm_se
+	# Store full results from this iteration
+	all_ufm_full[[bootstrap_iter]] = ufm_se
+	all_stm_full[[bootstrap_iter]] = stm_se
 
 
 }
 
+for (n in 1:nspp){
+
+	xi = ufm_inv_boot[[n]][,1:(nspp)]
+	si = ufm_inv_boot[[n]][,(nspp+1):(2*nspp)]
+	ri = ufm_inv_boot[[n]][,(3*nspp+1):(4*nspp)]
+	di = parms_ufm$del1_s
+	fi = parms_ufm$fij
+
+}
 
 
 mean_ufm = colMeans(all_ufm_se)
