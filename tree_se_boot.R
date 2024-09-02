@@ -15,7 +15,7 @@ ntime = 5000
 nspp = 2
 
 # Define the number of iterations and number of rows to subsample
-n_bootstrap = 10
+n_bootstrap = 100
 n_subsample = 200
 
 # Initialize variables to store results
@@ -111,8 +111,8 @@ for (bootstrap_iter in 1:n_bootstrap) {
 				parms=parms_stm, time= ntime)
 
 	for (n in 1:nspp){
-		ufm_inv_boot[[n]] = rbind(ufm_inv_boot[[n]], unlist(c(ufm_inv_full[[n]][1,], 
-									repros_sub[1,])) )
+		ufm_inv_boot[[n]] = rbind(ufm_inv_boot[[n]], unlist(c(ufm_inv_full[[n]][2,], 
+									repros_sub[2,])) )
 	}
 
 	repros_all[[bootstrap_iter]] = repros_sub
