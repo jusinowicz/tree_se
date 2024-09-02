@@ -141,7 +141,7 @@ for (a in 1:length(filenames)){
 
 		} #End i, invader species
 
-
+		
 	
 	#Once Aij is calculated for every pairwise combination, calculate the AijAji for every pair. 
 	simAijAji=simAij*t(simAij)

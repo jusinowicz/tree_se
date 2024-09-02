@@ -298,37 +298,77 @@ get_ldgrs = function (pop, invader, thresh = 0.001) {
 
 
 #=============================================================================
-#get_dij
+#get_ldg_ufm
 # Version 1: LDG only 
 # Function to measure the low-density growth rates, in the form of Dij from 
 # Usinowicz et al. 2012
 # 
 # Assume the data are pariwise interactions so xi, si, ri are each a matrix 
 # with dimensions #timesteps by 2.  
+#
+# Set "return" to either mean or full, to decide whether the function itself 
+# takes the average, or whether the unaveraged matrix is returned.
 #=============================================================================
 
-get_dij = function ( xi, si, ri, di, fi,aij, invader=2){
+get_ldg_ufm = function ( xi, si, ri, di, fi,aij, invader=2, return = "mean"){
 
 	nspp = dim(xi)[2]
 	aijm = matrix(aij[invader,],dim(xi)[1],nspp)
 	si1 = fi[invader] * si[,invader] + ri[,invader]*xi[,invader]/(1+rowSums(aijm*xi*ri) )  
-	Dij = mean(log(di[invader] + (1-di[invader])*(si1/(xi[,invader]*rowSums(si) ) ) ) ) 
+	LDG = mean(log(di[invader] + (1-di[invader])*(si1/(xi[,invader]*rowSums(si) ) ) ) ) 
 
-	return(Dij)
+	if (return == "full"){ 
+		return(LDG)
+	} else {
+		return(mean(LDG))
+	}
 
 }
 
 #=============================================================================
-#get_dij_approx1
-# Version 2: Can we numerically approximate di -> 1? Not really
+#get_ldg_stm
+# Version 1: LDG only 
+# Function to measure the low-density growth rates for Stump model, in the 
+# form of Dij from Usinowicz et al. 2012
+# 
+# Assume the data are pariwise interactions so xi, si, ri are each a matrix 
+# with dimensions #timesteps by 2.  
+#
+# Set "return" to either mean or full, to decide whether the function itself 
+# takes the average, or whether the unaveraged matrix is returned.
+#=============================================================================
+
+get_ldg_stm = function ( xi, ri, del1,att_e, invader=2, return = "mean"){
+
+	nspp = dim(xi)[2]
+	attm = matrix(att_e,dim(xi)[1],nspp)
+
+	pij = exp ( - attm *xi ) #Herbivore attack rate
+	ni_comp = sum(xi* ri* pij ) #Total apparent competition
+	LDG = mean(log(1-del1[invader,]+del1[invader,]*(ri[invader,]*pij[invader,]/ni_comp) ))
+
+	if (return == "full"){ 
+		return(LDG)
+	} else {
+		return(mean(LDG))
+	}
+
+}
+
+#=============================================================================
+#get_dij_ufm1
+# Version 2: Can we numerically approximate di -> 1?
 # Function to measure the low-density growth rates, in the form of Dij from 
 # Usinowicz et al. 2012
 # 
 # Assume the data are pariwise interactions so xi, si, ri are each a matrix 
 # with dimensions #timesteps by 2. 
+#
+# Set "return" to either mean or full, to decide whether the function itself 
+# takes the average, or whether the unaveraged matrix is returned.
 #=============================================================================
 
-get_dij_approx1 = function ( xi, si, ri, fi,aij, invader){
+get_dij_ufm1 = function ( xi, si, ri, fi, aij, invader, return = "mean"){
 
 	#di=0.99999
 	nspp = dim(xi)[2]
@@ -344,7 +384,51 @@ get_dij_approx1 = function ( xi, si, ri, fi,aij, invader){
 	Dij = mean(log(1 + (si1/(xi[,invader]*rowSums(si) ) ) ) ) 
 
 
-	return(Dij)
+	if (return == "full"){ 
+		return(Dij)
+	} else {
+		return(mean(Dij))
+	}
+
+
+}
+
+
+#=============================================================================
+#get_dij_stm1
+# Version 2: Can we numerically approximate di -> 1?
+# Function to measure the low-density growth rates, in the form of Dij from 
+# Usinowicz et al. 2012 but applied to the Stump model.
+# 
+# Assume the data are pariwise interactions so xi, si, ri are each a matrix 
+# with dimensions #timesteps by 2. 
+#
+# Set "return" to either mean or full, to decide whether the function itself 
+# takes the average, or whether the unaveraged matrix is returned.
+#=============================================================================
+
+get_dij_stm1 = function ( xi, ri, del1,att_e, invader=2, return = "mean" ){
+
+	#di=0.99999
+	nspp = dim(xi)[2]
+	attm = matrix(att_e,dim(xi)[1],nspp)
+
+	pij = exp ( - attm *xi ) #Herbivore attack rate
+	ni_comp = sum(xi* ri* pij ) #Total apparent competition
+
+	#This version matches the full approximation below. It is essentially
+	#assuming that species achieve their MAX growth rates relative to the 
+	#adult mortality rate, di. It is actually the correct way to do the 
+	# di -> 1 approximation numerically:
+
+	Dij = (log(1+(ri[invader,]*pij[invader,]/ni_comp) ) 
+
+	if (return == "full"){ 
+		return(Dij)
+	} else {
+		return(mean(Dij))
+	}
+
 
 }
 

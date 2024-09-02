@@ -41,6 +41,7 @@ repros_sp_scale= exp( scale( log (repros_sp.use +1) ) )
 #=============================================================================
 nspp = dim(repros_sp_scale)[2]
 ntime = dim(repros_sp_scale)[1]
+ntime = 100
 
 # Define the number of iterations and number of rows to subsample
 # n_subsample determines how long the pop sim will run. It is important
@@ -105,48 +106,59 @@ parms_stm$att_e = matrix(1,nspp,1) #Enemy attack rate ????<====Any expectation f
 
 #=============================================================================
 # Calculate each pairwise measurement of the storage effect. 
-# Do this for multiple bootstrap iterations
+#
+# This is currently implemented to check the invasion on a pairwise
+# basis only! That is, it is not 1 spp vs community. 
 #=============================================================================
 
-for (bootstrap_iter in 1:n_bootstrap) {
-	ntime = n_subsample
-	# Perform bootstrap resampling on repros_sp_scale preserving correlations
-	b_indices = sample(1:nrow(repros_sp_scale), size = n_subsample, replace = TRUE)
-	repros_sub= repros_sp_scale [b_indices, ]
-  
-	#=============================================================================
-	# Run the invasions to check coexistence. 
-  	# This is currently implemented to check the invasion on a pairwise
-  	# basis only! That is, it is not 1 spp vs community. 
-	#=============================================================================
+#Invader
+for (s1 in 1:nspp) { 
+  	#Cycle through residents
+  	for(s2 in 1:nspp){
 
-  	#Invader
-  	for (s1 in 1:nspp) { 
-  		#Cycle through residents
-  		for(s2 in 1:nspp){
+  	#Subset the reproduction and all parameters:
+	repros_sub_p = as.matrix(repros_sub[,c(s1,s2)])
 
-  			#Subset the reproduction and all parameters:
-  			repros_sub_p = as.matrix(repros_sub[,c(s1,s2)])
-
-  			#UFM
-  			parms_ufm_sub = NULL
-			parms_ufm_sub$aij = matrix(c(parms_ufm$aij[s1,s1],parms_ufm$aij[s1,s2],
+  	#UFM
+  	parms_ufm_sub = NULL
+	parms_ufm_sub$aij = matrix(c(parms_ufm$aij[s1,s1],parms_ufm$aij[s1,s2],
 										parms_ufm$aij[s2,s1], parms_ufm$aij[s2,s2]),
 										2,2)
-			parms_ufm_sub$fij = as.matrix(c(parms_ufm$fij[s1],parms_ufm$fij[s2]))
-			parms_ufm_sub$del1_s = as.matrix(c(parms_ufm$del1_s[s1], 
+	parms_ufm_sub$fij = as.matrix(c(parms_ufm$fij[s1],parms_ufm$fij[s2]))
+	parms_ufm_sub$del1_s = as.matrix(c(parms_ufm$del1_s[s1], 
 												parms_ufm$del1_s[s2]))
 
-			#STM
-			parms_stm_sub = NULL
-			parms_stm_sub$del1 = as.matrix(c(parms_stm$del1[s1],parms_stm$del1[s2])) #Adult death rate
-			parms_stm_sub$att_e = as.matrix(c(parms_stm$att_e[s1],parms_stm$att_e[s2])) #Enemy attack rate ????<====Any expectation from lit?   
+	#STM
+	parms_stm_sub = NULL
+	parms_stm_sub$del1 = as.matrix(c(parms_stm$del1[s1],parms_stm$del1[s2])) #Adult death rate
+	parms_stm_sub$att_e = as.matrix(c(parms_stm$att_e[s1],parms_stm$att_e[s2])) #Enemy attack rate ????<====Any expectation from lit?   
+
+		#=============================================================================
+		# Run the invasions to check coexistence. 
+		# Do this for multiple bootstrap iterations
+		#=============================================================================
+		ufm_inv_boot = vector("list", nspp)
+		stm_inv_boot = vector("list", nspp)
+
+		for (bootstrap_iter in 1:n_bootstrap) {
+
+			# Perform bootstrap resampling on repros_sp_scale preserving correlations
+			b_indices = sample(1:nrow(repros_sp_scale), size = n_subsample, replace = TRUE)
+			repros_sub= repros_sp_scale [b_indices, ]
+
 
 			#Run invasions 
 			ufm_inv_full = run_invasions( model = "ufm", repro = repros_sub_p, nspp=2, 
 						parms=parms_ufm_sub, time= ntime)
 			stm_inv_full = run_invasions( model = "stm", repro = repros_sub_p, nspp=2, 
 						parms=parms_stm_sub, time= ntime)
+
+			for (n in 1:nspp){
+				ufm_inv_boot[[n]] = rbind(ufm_inv_boot[[n]], unlist(c(ufm_inv_full[[n]][2,], 
+											repros_sub[2,])) )
+				stm_inv_boot[[n]] = rbind(stm_inv_boot[[n]], unlist(c(ufm_inv_full[[n]][2,], 
+								repros_sub[2,])) )
+			}
 
 			# #Check the invasions with basic plots
 			# par(mfrow = c(2,2))
@@ -176,6 +188,14 @@ for (bootstrap_iter in 1:n_bootstrap) {
 			stm_inv_con = run_invasions( model = "stm", repro = repros_con, nspp=2, 
 						parms=parms_stm_sub, time= ntime)
 
+			for (n in 1:nspp){
+				ufm_con_boot[[n]] = rbind(ufm_con_boot[[n]], unlist(c(ufm_inv_con[[n]][2,], 
+											repros_con[2,])) )
+				stm_con_boot[[n]] = rbind(stm_con_boot[[n]], unlist(c(ufm_inv_con[[n]][2,], 
+								repros_con[2,])) )
+			}
+
+
 			# #Check the invasions with basic plots
 			# par(mfrow = c(nspp,2))
 			# for(n in 1:nspp){
@@ -192,42 +212,13 @@ for (bootstrap_iter in 1:n_bootstrap) {
 			# 	lines( rowSums(as.matrix(ufm_inv_con[[n]][,spp_com])),col="blue")
 			# }
 
-			#Get the IGRs as the slope of log-transformed growth rate while it is below 
-			#a (somewhat arbitrary) low density
-
-			ufm_se = NULL 
-			stm_se = NULL
-
-			#UFM
-			#Get the growth rates for invader and resident community
-			#with variation. 
-			ufm_se$full = get_ldgrs(ufm_inv_full[[1]][,1:2], invader = 1,thresh=0.01)
-			#Get the growth rates for invader and resident community
-			#no variation. 
-			ufm_se$con = get_ldgrs(ufm_inv_con[[1]], invader = 1, thresh=0.01)
-			#The storage effect is the difference between these growth rates
-			ufm_se$se = ufm_se$full$inv - ufm_se$con$inv
-
-			#STM
-			#Get the growth rates for invader and resident community
-			#with variation. 
-			stm_se$full = get_ldgrs(stm_inv_full[[1]], invader = 1)
-			#Get the growth rates for invader and resident community
-			#no variation. 
-			stm_se$con = get_ldgrs(stm_inv_con[[1]], invader = 1)
-			#The storage effect is the difference between these growth rates
-			stm_se$se = stm_se$full$inv - stm_se$con$inv
-
-			#Store the SE calculation and LDGR for each boostrap iteration
-			all_ufm_se[s1,s2,bootstrap_iter] = ufm_se$se
-			all_stm_se[s1,s2,bootstrap_iter] = stm_se$se
-	
-			all_ufm_lgr[s1,s2,bootstrap_iter] = ufm_se$full$inv
-			all_stm_lgr[s1,s2,bootstrap_iter] = stm_se$full$inv
-
-			all_ufm_con[s1,s2,bootstrap_iter] = ufm_se$con$inv
-			all_stm_con[s1,s2,bootstrap_iter] = stm_se$con$inv
 		}
+
+		#Now do the calculations for LDG, SE, and Aij using the samples from 
+		#each of the iterations of the model. 
+
+
+
 	}
 
 }
