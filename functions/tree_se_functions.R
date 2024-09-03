@@ -315,7 +315,7 @@ get_ldg_ufm = function ( xi, si, ri, di, fi,aij, invader=2, return = "mean"){
 	nspp = dim(xi)[2]
 	aijm = matrix(aij[invader,],dim(xi)[1],nspp)
 	si1 = fi[invader] * si[,invader] + ri[,invader]*xi[,invader]/(1+rowSums(aijm*xi*ri) )  
-	LDG = mean(log(di[invader] + (1-di[invader])*(si1/(xi[,invader]*rowSums(si) ) ) ) ) 
+	LDG = log(di[invader] + (1-di[invader])*(si1/(xi[,invader]*rowSums(si) ) ) )  
 
 	if (return == "full"){ 
 		return(LDG)
@@ -338,14 +338,14 @@ get_ldg_ufm = function ( xi, si, ri, di, fi,aij, invader=2, return = "mean"){
 # takes the average, or whether the unaveraged matrix is returned.
 #=============================================================================
 
-get_ldg_stm = function ( xi, ri, del1,att_e, invader=2, return = "mean"){
+get_ldg_stm = function ( xi, ri, del1, att_e, invader=2, return = "mean"){
 
 	nspp = dim(xi)[2]
 	attm = matrix(att_e,dim(xi)[1],nspp)
 
 	pij = exp ( - attm *xi ) #Herbivore attack rate
-	ni_comp = sum(xi* ri* pij ) #Total apparent competition
-	LDG = mean(log(1-del1[invader,]+del1[invader,]*(ri[invader,]*pij[invader,]/ni_comp) ))
+	ni_comp = rowSums(xi* ri* pij ) #Total apparent competition
+	LDG = log(1-del1[invader]+del1[invader]*(ri[,invader]*pij[,invader]/ni_comp) )
 
 	if (return == "full"){ 
 		return(LDG)
@@ -381,7 +381,7 @@ get_dij_ufm1 = function ( xi, si, ri, fi, aij, invader, return = "mean"){
 	#adult mortality rate, di. It is actually the correct way to do the 
 	# di -> 1 approximation numerically:
 
-	Dij = mean(log(1 + (si1/(xi[,invader]*rowSums(si) ) ) ) ) 
+	Dij = log(1 + (si1/(xi[,invader]*rowSums(si) ) ) )  
 
 
 	if (return == "full"){ 
@@ -407,21 +407,21 @@ get_dij_ufm1 = function ( xi, si, ri, fi, aij, invader, return = "mean"){
 # takes the average, or whether the unaveraged matrix is returned.
 #=============================================================================
 
-get_dij_stm1 = function ( xi, ri, del1,att_e, invader=2, return = "mean" ){
+get_dij_stm1 = function ( xi, ri, att_e, invader=2, return = "mean" ){
 
 	#di=0.99999
 	nspp = dim(xi)[2]
 	attm = matrix(att_e,dim(xi)[1],nspp)
 
 	pij = exp ( - attm *xi ) #Herbivore attack rate
-	ni_comp = sum(xi* ri* pij ) #Total apparent competition
+	ni_comp = rowSums(xi* ri* pij ) #Total apparent competition
 
 	#This version matches the full approximation below. It is essentially
 	#assuming that species achieve their MAX growth rates relative to the 
 	#adult mortality rate, di. It is actually the correct way to do the 
 	# di -> 1 approximation numerically:
 
-	Dij = (log(1+(ri[invader,]*pij[invader,]/ni_comp) ) 
+	Dij = log(1+(ri[,invader]*pij[,invader]/ni_comp) ) 
 
 	if (return == "full"){ 
 		return(Dij)

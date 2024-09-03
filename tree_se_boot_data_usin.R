@@ -52,14 +52,25 @@ n_bootstrap = 10
 n_subsample = 1000
 
 # Initialize variables to store results
-#Each species competes against each other species and itself. 
+#Each species competes against each other species and itself.
+#Storage effect 
 all_ufm_se = array( 0, dim = c(nspp, nspp, n_bootstrap))
 all_stm_se = array( 0, dim = c(nspp, nspp, n_bootstrap))
+sd_ufm_se = array( 0, dim = c(nspp, nspp, n_bootstrap))
+sd_stm_se = array( 0, dim = c(nspp, nspp, n_bootstrap))
+
+#The LDG (or LGR), low-density growth rate
 all_ufm_lgr = array( 0, dim = c(nspp, nspp, n_bootstrap))
 all_stm_lgr = array( 0, dim = c(nspp, nspp, n_bootstrap))
+sd_ufm_lgr = array( 0, dim = c(nspp, nspp, n_bootstrap))
+sd_stm_lgr = array( 0, dim = c(nspp, nspp, n_bootstrap))
+
+#The LDG in constant environment
 all_ufm_con = array( 0, dim = c(nspp, nspp, n_bootstrap))
 all_stm_con = array( 0, dim = c(nspp, nspp, n_bootstrap))
-
+#The Aij, competition coefficients
+all_ufm_Aij = array( 0, dim = c(nspp, nspp, n_bootstrap))
+all_stm_Aij = array( 0, dim = c(nspp, nspp, n_bootstrap))
 
 # Get the covariance matrix from data
 sig1 = cov(repros_sp_scale)
@@ -116,9 +127,6 @@ for (s1 in 1:nspp) {
   	#Cycle through residents
   	for(s2 in 1:nspp){
 
-  	#Subset the reproduction and all parameters:
-	repros_sub_p = as.matrix(repros_sub[,c(s1,s2)])
-
   	#UFM
   	parms_ufm_sub = NULL
 	parms_ufm_sub$aij = matrix(c(parms_ufm$aij[s1,s1],parms_ufm$aij[s1,s2],
@@ -133,90 +141,181 @@ for (s1 in 1:nspp) {
 	parms_stm_sub$del1 = as.matrix(c(parms_stm$del1[s1],parms_stm$del1[s2])) #Adult death rate
 	parms_stm_sub$att_e = as.matrix(c(parms_stm$att_e[s1],parms_stm$att_e[s2])) #Enemy attack rate ????<====Any expectation from lit?   
 
-		#=============================================================================
-		# Run the invasions to check coexistence. 
-		# Do this for multiple bootstrap iterations
-		#=============================================================================
-		ufm_inv_boot = vector("list", nspp)
-		stm_inv_boot = vector("list", nspp)
+	#=============================================================================
+	# Run the invasions to check coexistence. 
+	# Do this for multiple bootstrap iterations
+	#=============================================================================
+	ufm_inv_boot = vector("list", nspp)
+	stm_inv_boot = vector("list", nspp)
+	ufm_con_boot = vector("list", nspp)
+	stm_con_boot = vector("list", nspp)
 
-		for (bootstrap_iter in 1:n_bootstrap) {
+	for (bootstrap_iter in 1:n_bootstrap) {
 
-			# Perform bootstrap resampling on repros_sp_scale preserving correlations
-			b_indices = sample(1:nrow(repros_sp_scale), size = n_subsample, replace = TRUE)
-			repros_sub= repros_sp_scale [b_indices, ]
+		# Perform bootstrap resampling on repros_sp_scale preserving correlations
+		b_indices = sample(1:nrow(repros_sp_scale), size = n_subsample, replace = TRUE)
+		repros_sub= repros_sp_scale [b_indices, ]
 
+		#Subset the reproduction and all parameters:
+		repros_sub_p = as.matrix(repros_sub[,c(s1,s2)])
 
-			#Run invasions 
-			ufm_inv_full = run_invasions( model = "ufm", repro = repros_sub_p, nspp=2, 
-						parms=parms_ufm_sub, time= ntime)
-			stm_inv_full = run_invasions( model = "stm", repro = repros_sub_p, nspp=2, 
-						parms=parms_stm_sub, time= ntime)
+		#Run invasions 
+		ufm_inv_full = run_invasions( model = "ufm", repro = repros_sub_p, nspp=2, 
+					parms=parms_ufm_sub, time= ntime)
+		stm_inv_full = run_invasions( model = "stm", repro = repros_sub_p, nspp=2, 
+					parms=parms_stm_sub, time= ntime)
 
-			for (n in 1:nspp){
-				ufm_inv_boot[[n]] = rbind(ufm_inv_boot[[n]], unlist(c(ufm_inv_full[[n]][2,], 
-											repros_sub[2,])) )
-				stm_inv_boot[[n]] = rbind(stm_inv_boot[[n]], unlist(c(ufm_inv_full[[n]][2,], 
-								repros_sub[2,])) )
-			}
-
-			# #Check the invasions with basic plots
-			# par(mfrow = c(2,2))
-			# for(n in 1:2){
-			# 	plot(ufm_inv_full[[n]][,n],t="l",ylim=c(0,1), main = "UFM")
-			# 	spp_com = 1:2
-			# 	spp_com = spp_com[-n]
-			# 	lines( rowSums(as.matrix(ufm_inv_full[[n]][,spp_com])),col="blue")
-			# }
-
-			# for(n in 1:2){
-			# 	plot(stm_inv_full[[n]][,n],t="l", ylim=c(0,1), main = "STM")
-			# 	spp_com = 1:2
-			# 	spp_com = spp_com[-n]
-			# 	lines( rowSums(as.matrix(ufm_inv_full[[n]][,spp_com])),col="blue")
-			# }
-
-			#=============================================================================
-			# Measure the storage effect. Compare the average low-density growth rates 
-			# across two scenarios: when environmental variation is present, and when 
-			# the environmental response is held constant at its average.
-			#=============================================================================
-			#Run invasions with constant environment: 
-			repros_con = matrix(colMeans(repros_sub_p), ntime, 2, byrow=T)
-			ufm_inv_con= run_invasions( model = "ufm", repro = repros_con, nspp=2, 
-						parms=parms_ufm_sub, time= ntime)
-			stm_inv_con = run_invasions( model = "stm", repro = repros_con, nspp=2, 
-						parms=parms_stm_sub, time= ntime)
-
-			for (n in 1:nspp){
-				ufm_con_boot[[n]] = rbind(ufm_con_boot[[n]], unlist(c(ufm_inv_con[[n]][2,], 
-											repros_con[2,])) )
-				stm_con_boot[[n]] = rbind(stm_con_boot[[n]], unlist(c(ufm_inv_con[[n]][2,], 
-								repros_con[2,])) )
-			}
-
-
-			# #Check the invasions with basic plots
-			# par(mfrow = c(nspp,2))
-			# for(n in 1:nspp){
-			# 	plot(ufm_inv_con[[n]][,n],t="l", ylim=c(0,1), main = "UFM")
-			# 	spp_com = 1:nspp
-			# 	spp_com = spp_com[-n]
-			# 	lines( rowSums(as.matrix(ufm_inv_con[[n]][,spp_com])),col="blue")
-			# }
-
-			# for(n in 1:nspp){
-			# 	plot(stm_inv_con[[n]][,n],t="l", ylim=c(0,1), main = "STM")
-			# 	spp_com = 1:nspp
-			# 	spp_com = spp_com[-n]
-			# 	lines( rowSums(as.matrix(ufm_inv_con[[n]][,spp_com])),col="blue")
-			# }
-
+		for (n in 1:2){
+			ufm_inv_boot[[n]] = rbind(ufm_inv_boot[[n]], unlist(c(ufm_inv_full[[n]][2,], 
+										repros_sub_p[2,])) )
+			stm_inv_boot[[n]] = rbind(stm_inv_boot[[n]], unlist(c(stm_inv_full[[n]][2,], 
+							repros_sub_p[2,])) )
 		}
 
-		#Now do the calculations for LDG, SE, and Aij using the samples from 
-		#each of the iterations of the model. 
+		# #Check the invasions with basic plots
+		# par(mfrow = c(2,2))
+		# for(n in 1:2){
+		# 	plot(ufm_inv_full[[n]][,n],t="l",ylim=c(0,1), main = "UFM")
+		# 	spp_com = 1:2
+		# 	spp_com = spp_com[-n]
+		# 	lines( rowSums(as.matrix(ufm_inv_full[[n]][,spp_com])),col="blue")
+		# }
 
+		# for(n in 1:2){
+		# 	plot(stm_inv_full[[n]][,n],t="l", ylim=c(0,1), main = "STM")
+		# 	spp_com = 1:2
+		# 	spp_com = spp_com[-n]
+		# 	lines( rowSums(as.matrix(ufm_inv_full[[n]][,spp_com])),col="blue")
+		# }
+
+		#=============================================================================
+		# Measure the storage effect. Compare the average low-density growth rates 
+		# across two scenarios: when environmental variation is present, and when 
+		# the environmental response is held constant at its average.
+		#=============================================================================
+		#Run invasions with constant environment: 
+		repros_con = matrix(colMeans(repros_sub_p), ntime, 2, byrow=T)
+		ufm_inv_con= run_invasions( model = "ufm", repro = repros_con, nspp=2, 
+					parms=parms_ufm_sub, time= ntime)
+		stm_inv_con = run_invasions( model = "stm", repro = repros_con, nspp=2, 
+					parms=parms_stm_sub, time= ntime)
+
+		for (n in 1:2){
+			ufm_con_boot[[n]] = rbind(ufm_con_boot[[n]], unlist(c(ufm_inv_con[[n]][2,], 
+										repros_con[2,])) )
+			stm_con_boot[[n]] = rbind(stm_con_boot[[n]], unlist(c(stm_inv_con[[n]][2,], 
+							repros_con[2,])) )
+		}
+
+
+		# #Check the invasions with basic plots
+		# par(mfrow = c(nspp,2))
+		# for(n in 1:nspp){
+		# 	plot(ufm_inv_con[[n]][,n],t="l", ylim=c(0,1), main = "UFM")
+		# 	spp_com = 1:nspp
+		# 	spp_com = spp_com[-n]
+		# 	lines( rowSums(as.matrix(ufm_inv_con[[n]][,spp_com])),col="blue")
+		# }
+
+		# for(n in 1:nspp){
+		# 	plot(stm_inv_con[[n]][,n],t="l", ylim=c(0,1), main = "STM")
+		# 	spp_com = 1:nspp
+		# 	spp_com = spp_com[-n]
+		# 	lines( rowSums(as.matrix(ufm_inv_con[[n]][,spp_com])),col="blue")
+		# }
+
+	}
+
+	#Now do the calculations for LDG, SE, and Aij using the samples from 
+	#each of the iterations of the model. 
+	for( sp in 1:2){
+
+			# all_ufm_lgr[s1,s2,1] = 
+			# get_ldg_ufm ( xi = ufm_inv_boot[[sp]][,1:(2)],
+			# 	si = ufm_inv_boot[[sp]][,(2+1):(2*2)],
+			# 	ri = ufm_inv_boot[[sp]][,(3*2+1):(4*2)],
+			# 	fi = parms_ufm_sub$fij,
+			# 	di = parms_ufm_sub$del1_s,
+			# 	aij = parms_ufm_sub$aij,
+			# 	invader = sp
+			# )
+
+			#Approximate LDG for UFM as di -> 1
+			ufm_lgr = 
+					get_dij_ufm1( xi = ufm_inv_boot[[sp]][,1:(2)],
+						si = ufm_inv_boot[[sp]][,(2+1):(2*2)],
+						ri = ufm_inv_boot[[sp]][,(3*2+1):(4*2)],
+						fi = parms_ufm_sub$fij,
+						aij = parms_ufm_sub$aij,
+						invader = sp,
+						return = "full"
+					)
+
+			#Approximate LDG for UFM with constant environment as di -> 1
+			ufm_con = 
+					get_dij_ufm1( xi = ufm_con_boot[[sp]][,1:(2)],
+						si = ufm_con_boot[[sp]][,(2+1):(2*2)],
+						ri = ufm_con_boot[[sp]][,(3*2+1):(4*2)],
+						fi = parms_ufm_sub$fij,
+						aij = parms_ufm_sub$aij,
+						invader = sp,
+						return = "full"
+					)
+
+			#Take the averages
+			all_ufm_lgr[s1,s2,1] = mean(ufm_lgr)
+			sd_ufm_lgr[s1,s2,1]  = sd(ufm_lgr)
+ 
+			all_ufm_con[s1,s2,1] = mean(ufm_con)
+
+			#Storage effect is the average difference between the LDG with and 
+			#without fluctuations (constant environment)
+			all_ufm_se[s1,s2,1] = mean(ufm_lgr-ufm_con)
+			sd_ufm_se[s1,s2,1] = sd(ufm_lgr-ufm_con)
+
+
+			#The LDG can be easily converted to Aij now
+			all_ufm_Aij[s1,s2,1]  = 1/exp(mean(ufm_lgr) )
+
+			# all_stm_lgr[s1,s2,1] = 
+			# 		get_ldg_stm( xi = stm_inv_boot[[sp]][,1:(2)],
+			# 			ri = stm_inv_boot[[sp]][,(2+1):(2*2)],
+			# 			del1 = parms_stm_sub$del1,
+			# 			att_e = parms_stm_sub$att_e,
+			# 			invader = sp
+			# 		)
+
+			#Approximate LDG for STM as di -> 1
+			stm_lgr = 
+					get_dij_stm1( xi = stm_inv_boot[[sp]][,1:(2)],
+						ri = stm_inv_boot[[sp]][,(2+1):(2*2)],
+						att_e = parms_stm_sub$att_e,
+						invader = sp,
+						return = "full"
+					)
+
+			#Approximate LDG for STM with constant environment as di -> 1
+			stm_con = 
+					get_dij_stm1( xi = stm_con_boot[[sp]][,1:(2)],
+						ri = stm_con_boot[[sp]][,(2+1):(2*2)],
+						att_e = parms_stm_sub$att_e,
+						invader = sp,
+						return = "full"
+					)
+
+			#Take the averages
+			all_stm_lgr[s1,s2,1] = mean(stm_lgr)
+			sd_stm_lgr[s1,s2,1]  = sd(stm_lgr)
+
+			all_stm_con[s1,s2,1] = mean(stm_con)
+
+			#Storage effect is the average difference between the LDG with and 
+			#without fluctuations (constant environment)
+			all_stm_se[s1,s2,1] = mean(stm_lgr - stm_con)
+			sd_stm_se[s1,s2,1]  = sd(stm_lgr - stm_con)
+			
+			#The LDG can be easily converted to Aij now
+			all_stm_Aij[s1,s2,1]  = 1/exp(mean(stm_lgr) )
 
 
 	}
@@ -224,24 +323,6 @@ for (s1 in 1:nspp) {
 }
 
 
-#Get the average and sd across all the bootstraps for each pairwise interaction.
-#Using apply is always faster than a for loop.
-mean_ufm = apply(all_ufm_se, c(1, 2), function(x) mean(x)) 
-sd_ufm = apply(all_ufm_se, c(1, 2), function(x) sd(x)) 
-mean_stm = apply(all_stm_se, c(1, 2), function(x) mean(x)) 
-sd_stm = apply(all_stm_se, c(1, 2), function(x) sd(x)) 
-
-rownames(mean_ufm) = rownames(sig1)
-colnames(mean_ufm) = colnames(sig1)
-rownames(mean_stm) = rownames(sig1)
-colnames(mean_stm) = colnames(sig1)
-
-#mean_ulgr = apply(all_ufm_lgr, c(1, 2), function(x) mean(x)) 
-#mean_ulgr = mean_ulgr*18.277 -17.282 
-#mean_ufm_se = mean_ulgr - 1
-# sd_ulgr = apply(all_ufm_lgr, c(1, 2), function(x) sd(x)) 
-# mean_slgr = apply(all_stm_lgr, c(1, 2), function(x) mean(x)) 
-# sd_slgr = apply(all_stm_lgr, c(1, 2), function(x) sd(x)) 
 
 #=============================================================================
 #Plot a histogram of the SE measurements.
@@ -250,9 +331,25 @@ colnames(mean_stm) = colnames(sig1)
 # maijs_plot = 1/(mean_slgr *t(mean_slgr))
 # maiju_plot = maiju_plot[upper.tri(maiju_plot)]
 # maijs_plot = maijs_plot[upper.tri(maijs_plot)]
+mean_ufm = all_ufm_lgr[,,1]
+mean_stm = all_stm_lgr[,,1]
+
+mean_ufm_se = all_ufm_se[,,1]
+mean_stm_se = all_stm_se[,,1]
+
+mean_ufm_aij = all_ufm_Aij[,,1]
+mean_stm_aij = all_stm_Aij[,,1]
+
+
 
 mufm_plot = mean_ufm[upper.tri(mean_ufm)]
 mstm_plot = mean_stm[upper.tri(mean_stm)]
+
+mufm_se_plot = mean_ufm_se[upper.tri(mean_ufm)]
+mstm_se_plot = mean_stm_se[upper.tri(mean_stm)]
+
+mufm_aij_plot = mean_ufm_aij[upper.tri(mean_ufm)]
+mstm_aij_plot = mean_stm_aij[upper.tri(mean_stm)]
 
 # mufm_plot = mean_ufm_se[upper.tri(mean_ufm_se)]
 # mstm_plot = mean_stm_se[upper.tri(mean_stm_se)]
