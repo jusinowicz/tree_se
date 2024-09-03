@@ -356,7 +356,9 @@ mstm_aij_plot = mean_stm_aij[upper.tri(mean_stm)]
 # mufm_plot = mean_ufm_se[upper.tri(mean_ufm_se)]
 # mstm_plot = mean_stm_se[upper.tri(mean_stm_se)]
 
-pdf(file="SE_models1.pdf", height=8, width=8, onefile=TRUE, family='Helvetica', pointsize=16)
+#Plot of the LGRs
+pdf(file="logLGR_models1.pdf", height=8, width=8, onefile=TRUE, family='Helvetica', pointsize=16)
+
 
 par(mfrow = c(1,2))
 hist(mufm_plot, main = "UFM model",xaxt="n")
@@ -374,6 +376,49 @@ axis(1, at = c(0,median(mstm_plot), max(mstm_plot),1), labels = c(0,paste(round(
 	paste(round(max(mstm_plot),digits=3)),1))
 
 dev.off()
+
+
+#Plot of the Storage Effect
+pdf(file="SE_models1.pdf", height=8, width=8, onefile=TRUE, family='Helvetica', pointsize=16)
+
+par(mfrow = c(1,2))
+hist(mufm_se_plot, main = "UFM model",xaxt="n")
+# Add a vertical line for the overall median
+abline(v = median(mufm_se_plot), col = "red", lwd = 2)
+# Label the overall median on the x-axis
+axis(1, at = c(0,median(mufm_se_plot), max(mufm_se_plot),1), labels = c(0,paste(round(median(mufm_se_plot),digits=3)), 
+	paste(round(max(mufm_se_plot),digits=3)),1))
+
+hist(mstm_se_plot, main = "STM model",xaxt="n")
+# Add a vertical line for the overall median
+abline(v = median(mstm_se_plot), col = "red", lwd = 2)
+# Label the overall median on the x-axis
+axis(1, at = c(0,median(mstm_se_plot), max(mstm_se_plot),1), labels = c(0,paste(round(median(mstm_se_plot),digits=3)), 
+	paste(round(max(mstm_se_plot),digits=3)),1))
+
+dev.off()
+
+
+#Plot of the Aij (one-sided)
+pdf(file="aij_models1.pdf", height=8, width=8, onefile=TRUE, family='Helvetica', pointsize=16)
+
+par(mfrow = c(1,2))
+hist(mufm_aij_plot, main = "UFM model",xaxt="n")
+# Add a vertical line for the overall median
+abline(v = median(mufm_aij_plot), col = "red", lwd = 2)
+# Label the overall median on the x-axis
+axis(1, at = c(0,median(mufm_aij_plot), max(mufm_aij_plot),1), labels = c(0,paste(round(median(mufm_aij_plot),digits=3)), 
+	paste(round(max(mufm_aij_plot),digits=3)),1))
+
+hist(mstm_aij_plot, main = "STM model",xaxt="n")
+# Add a vertical line for the overall median
+abline(v = median(mstm_aij_plot), col = "red", lwd = 2)
+# Label the overall median on the x-axis
+axis(1, at = c(0,median(mstm_aij_plot), max(mstm_aij_plot),1), labels = c(0,paste(round(median(mstm_aij_plot),digits=3)), 
+	paste(round(max(mstm_aij_plot),digits=3)),1))
+
+dev.off()
+
 
 # hist(maiju_plot, main = "UFM model",xaxt="n",xlim=c(0,1))
 # # Add a vertical line for the overall median
