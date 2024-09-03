@@ -125,6 +125,8 @@ parms_stm$att_e = matrix(1,nspp,1) #Enemy attack rate ????<====Any expectation f
 #Invader
 for (s1 in 1:nspp) { 
   	#Cycle through residents
+  	print(paste("Species 1 is ",s1,".",sep =""))
+
   	for(s2 in 1:nspp){
 
   	#UFM
@@ -316,7 +318,7 @@ for (s1 in 1:nspp) {
 			
 			#The LDG can be easily converted to Aij now
 			all_stm_Aij[s1,s2,1]  = 1/exp(mean(stm_lgr) )
-
+		}
 
 	}
 
